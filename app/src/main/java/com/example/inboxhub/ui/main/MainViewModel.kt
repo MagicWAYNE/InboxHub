@@ -26,8 +26,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
     
-    // 当前使用的API配置
-    private var _currentApiConfig: ApiConfig = ApiConfig.createDefault()
+    // 当前使用的API配置，可能为null
+    private var _currentApiConfig: ApiConfig? = null
     
     // 获取所有API配置
     val apiConfigs = apiConfigRepository.apiConfigs
@@ -40,7 +40,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             apiConfigRepository.currentApiConfig.collectLatest { config ->
                 _currentApiConfig = config
-                Log.d(TAG, "当前API配置已更新: ${config.name}")
+                Log.d(TAG, "当前API配置已更新: ${config?.name ?: "无配置"}")
+                
+                // 更新UI状态以反映是否有可用的API配置
+                _uiState.update { 
+                    it.copy(hasApiConfig = config != null) 
+                }
             }
         }
     }
@@ -76,12 +81,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val content = _uiState.value.messageContent.trim()
         if (content.isEmpty()) return
 
-        Log.d(TAG, "开始发送消息: $content，使用配置: ${_currentApiConfig.name}")
+        // 检查是否有可用的API配置
+        val currentConfig = _currentApiConfig
+        if (currentConfig == null) {
+            Log.e(TAG, "无法发送消息：没有可用的API配置")
+            _uiState.update { 
+                it.copy(
+                    isSending = false,
+                    isSuccess = false,
+                    errorMessage = "没有可用的API配置，请先在设置中添加配置" 
+                ) 
+            }
+            return
+        }
+
+        Log.d(TAG, "开始发送消息: $content，使用配置: ${currentConfig.name}")
         _uiState.update { it.copy(isSending = true, errorMessage = null) }
 
         viewModelScope.launch {
             Log.d(TAG, "调用消息仓库发送消息")
-            val result = messageRepository.sendMessage(content, _currentApiConfig)
+            val result = messageRepository.sendMessage(content, currentConfig)
 
             result.fold(
                 onSuccess = { responseOutput ->

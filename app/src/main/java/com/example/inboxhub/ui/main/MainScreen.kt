@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,9 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,7 +61,7 @@ fun MainScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val apiConfigs by viewModel.apiConfigs.collectAsState(initial = emptyList())
-    val currentApiConfig by viewModel.currentApiConfig.collectAsState(initial = ApiConfig.createDefault())
+    val currentApiConfig by viewModel.currentApiConfig.collectAsState(initial = null)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -94,6 +100,16 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // 显示没有配置的提示
+            if (apiConfigs.isEmpty()) {
+                NoConfigsMessage(
+                    onNavigateToSettings = onNavigateToSettings,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(16.dp)
+                )
+            }
+            
             // 状态消息 - 显示在顶部
             if (uiState.errorMessage != null || uiState.isSuccess) {
                 StatusMessage(
@@ -120,7 +136,7 @@ fun MainScreen(
                 // 配置标签行 - 位于输入框上方
                 ConfigTabs(
                     configs = apiConfigs.take(3),
-                    currentConfigId = currentApiConfig.id,
+                    currentConfigId = currentApiConfig?.id,
                     onConfigSelected = { configId ->
                         viewModel.setCurrentApiConfig(configId)
                     },
@@ -133,7 +149,8 @@ fun MainScreen(
                 MessageInput(
                     value = uiState.messageContent,
                     onValueChange = viewModel::updateMessageContent,
-                    placeholder = "输入您要收集的信息...",
+                    placeholder = if (apiConfigs.isEmpty()) "请先添加API配置..." else "输入您要收集的信息...",
+                    enabled = apiConfigs.isNotEmpty() && currentApiConfig != null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 60.dp) // 为配置标签行留出空间
@@ -144,10 +161,62 @@ fun MainScreen(
                     onClick = viewModel::sendMessage,
                     isSending = uiState.isSending,
                     isSuccess = uiState.isSuccess,
+                    enabled = apiConfigs.isNotEmpty() && currentApiConfig != null,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(bottom = 12.dp, end = 12.dp)
                 )
+            }
+        }
+    }
+}
+
+/**
+ * 无配置信息提示组件
+ */
+@Composable
+fun NoConfigsMessage(
+    onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(48.dp)
+            )
+            
+            Text(
+                text = "未找到API配置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            
+            Text(
+                text = "请先在设置中添加API配置，以便发送信息",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            
+            Button(
+                onClick = onNavigateToSettings,
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Text("前往设置")
             }
         }
     }
@@ -159,7 +228,7 @@ fun MainScreen(
 @Composable
 fun ConfigTabs(
     configs: List<ApiConfig>,
-    currentConfigId: String,
+    currentConfigId: String?,
     onConfigSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -167,34 +236,46 @@ fun ConfigTabs(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 确保至少显示3个标签位置
-        val configsToShow = configs.take(3).toMutableList()
-        while (configsToShow.size < 3) {
-            configsToShow.add(ApiConfig(
-                id = "empty_${configsToShow.size}",
-                name = "配置${configsToShow.size + 1}",
-                baseUrl = "",
-                apiKey = "",
-                workflowId = "",
-                isDefault = false
-            ))
-        }
-        
-        configsToShow.forEachIndexed { index, config ->
-            val isSelected = config.id == currentConfigId
-            val isRealConfig = index < configs.size
+        if (configs.isEmpty()) {
+            // 如果没有配置，显示提示标签
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.LightGray.copy(alpha = 0.3f))
+                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "没有可用的API配置",
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        } else {
+            // 显示实际的配置标签
+            configs.forEachIndexed { index, config ->
+                val isSelected = config.id == currentConfigId
+                
+                ConfigTab(
+                    name = config.name,
+                    isSelected = isSelected,
+                    onClick = { onConfigSelected(config.id) },
+                    enabled = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
             
-            ConfigTab(
-                name = config.name,
-                isSelected = isSelected,
-                onClick = { 
-                    if (isRealConfig) {
-                        onConfigSelected(config.id) 
-                    }
-                },
-                enabled = isRealConfig,
-                modifier = Modifier.weight(1f)
-            )
+            // 如果实际配置少于3个，填充空白位置
+            val emptySlots = 3 - configs.size
+            repeat(emptySlots) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                )
+            }
         }
     }
 }

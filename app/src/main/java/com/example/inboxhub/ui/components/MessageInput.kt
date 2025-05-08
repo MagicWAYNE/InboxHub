@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
  * @param onValueChange 输入内容变化回调
  * @param modifier 修饰符
  * @param placeholder 占位文本
+ * @param enabled 是否启用输入框
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +33,8 @@ fun MessageInput(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "输入待办事项"
+    placeholder: String = "输入待办事项",
+    enabled: Boolean = true
 ) {
     // 创建一个焦点请求器
     val focusRequester = remember { FocusRequester() }
@@ -56,6 +58,7 @@ fun MessageInput(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             },
+            enabled = enabled, // 使用参数控制是否启用
             minLines = 3, // 最小3行
             maxLines = 5, // 最大5行
             shape = RoundedCornerShape(8.dp),
@@ -63,8 +66,10 @@ fun MessageInput(
         )
     }
 
-    // 启动焦点请求，让输入框获得默认焦点
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+    // 只有在组件启用时才请求焦点
+    if (enabled) {
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
     }
 }

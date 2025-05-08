@@ -30,8 +30,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // 获取所有API配置
     val apiConfigs: Flow<List<ApiConfig>> = apiConfigRepository.apiConfigs
     
-    // 当前选中的API配置
-    val currentApiConfig: Flow<ApiConfig> = apiConfigRepository.currentApiConfig
+    // 当前选中的API配置，可能为null
+    val currentApiConfig: Flow<ApiConfig?> = apiConfigRepository.currentApiConfig
     
     // UI状态
     private val _uiState = MutableStateFlow(SettingsUiState())

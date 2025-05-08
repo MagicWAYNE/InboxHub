@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
  * @param onClick 点击回调
  * @param isSending 是否正在发送
  * @param isSuccess 是否发送成功
+ * @param enabled 是否启用按钮
  * @param modifier 修饰符
  */
 @Composable
@@ -35,6 +36,7 @@ fun SendButton(
     onClick: () -> Unit,
     isSending: Boolean,
     isSuccess: Boolean,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val rotationAngle by animateFloatAsState(
@@ -42,14 +44,21 @@ fun SendButton(
         label = "rotation"
     )
     
+    val isButtonEnabled = enabled && !isSending && !isSuccess
+    
     FloatingActionButton(
-        onClick = { if (!isSending && !isSuccess) onClick() },
+        onClick = { if (isButtonEnabled) onClick() },
         containerColor = when {
+            !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             isSuccess -> MaterialTheme.colorScheme.primary
             isSending -> MaterialTheme.colorScheme.surfaceVariant
             else -> MaterialTheme.colorScheme.primary
         },
-        contentColor = if (isSending) MaterialTheme.colorScheme.primary else Color.White,
+        contentColor = when {
+            !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            isSending -> MaterialTheme.colorScheme.primary
+            else -> Color.White
+        },
         modifier = modifier.size(48.dp),
         shape = RoundedCornerShape(12.dp)
     ) {

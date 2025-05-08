@@ -74,9 +74,9 @@ fun SettingsScreen(
     val apiConfigs by viewModel.apiConfigs.collectAsState(initial = emptyList())
     Log.d(TAG, "收集到API配置列表，数量: ${apiConfigs.size}")
     
-    // 使用ApiConfig.createDefault作为初始值，避免空指针
-    val currentApiConfig by viewModel.currentApiConfig.collectAsState(initial = ApiConfig.createDefault())
-    Log.d(TAG, "收集到当前API配置: ${currentApiConfig.name}")
+    // 使用null作为初始值，表示没有当前配置
+    val currentApiConfig by viewModel.currentApiConfig.collectAsState(initial = null)
+    Log.d(TAG, "收集到当前API配置: ${currentApiConfig?.name ?: "无配置"}")
     
     val uiState by viewModel.uiState.collectAsState()
     Log.d(TAG, "收集到UI状态: isEditing=${uiState.isEditing}, editingConfig=${uiState.editingConfig?.name ?: "null"}")
@@ -136,30 +136,46 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
-            // API配置列表
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Log.d(TAG, "渲染API配置列表，数量: ${apiConfigs.size}")
-                items(apiConfigs) { config ->
-                    ApiConfigItem(
-                        config = config,
-                        isSelected = config.id == currentApiConfig.id,
-                        onSelect = { 
-                            Log.d(TAG, "选择配置: ${config.name}")
-                            viewModel.setCurrentApiConfig(config.id) 
-                        },
-                        onEdit = { 
-                            Log.d(TAG, "编辑配置: ${config.name}")
-                            viewModel.startEditConfig(config) 
-                        },
-                        onDelete = {
-                            Log.d(TAG, "准备删除配置: ${config.name}")
-                            configToDelete = config
-                            showDeleteConfirmDialog = true
-                        }
+            if (apiConfigs.isEmpty()) {
+                // 没有配置时显示提示
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "暂无API配置，请点击右下角按钮添加",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            } else {
+                // API配置列表
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Log.d(TAG, "渲染API配置列表，数量: ${apiConfigs.size}")
+                    items(apiConfigs) { config ->
+                        ApiConfigItem(
+                            config = config,
+                            isSelected = currentApiConfig?.id == config.id,
+                            onSelect = { 
+                                Log.d(TAG, "选择配置: ${config.name}")
+                                viewModel.setCurrentApiConfig(config.id) 
+                            },
+                            onEdit = { 
+                                Log.d(TAG, "编辑配置: ${config.name}")
+                                viewModel.startEditConfig(config) 
+                            },
+                            onDelete = {
+                                Log.d(TAG, "准备删除配置: ${config.name}")
+                                configToDelete = config
+                                showDeleteConfirmDialog = true
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -334,9 +350,12 @@ fun ApiConfigEditDialog(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
+                // Determine if this is a new config or editing an existing one
+                val isNewConfig = apiConfig.name == "新配置" && apiConfig.apiKey.isEmpty() && apiConfig.workflowId.isEmpty()
+                
                 // 标题
                 Text(
-                    text = if (apiConfig.id == "default") "创建新配置" else "编辑配置",
+                    text = if (isNewConfig) "创建新配置" else "编辑配置",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp)
