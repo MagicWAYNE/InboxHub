@@ -1,0 +1,18 @@
+{
+    "mcpServers": {
+      "supabase": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@supabase/mcp-server-supabase@latest",
+          "--read-only",
+          "--project-ref=InboxHub"
+        ],
+        "env": {
+          "SUPABASE_ACCESS_TOKEN": "sbp_5739e83190aaaf2d396582b010bed02abb81d599"
+        }
+      }
+    }
+  }
